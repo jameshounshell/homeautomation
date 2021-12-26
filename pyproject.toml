@@ -5,7 +5,7 @@ description = ""
 authors = ["James Hounshell <jameshounshell@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "3.9"
+python = ">=3.9"
 pytest-watch = "pysmartthings"
 aiohttp = "^3.8.1"
 pysmartthings = "^0.7.7"
