@@ -1,3 +1,5 @@
+import contextlib
+import math
 import os
 import aiohttp
 import asyncio
@@ -5,12 +7,43 @@ import pysmartthings
 import datetime
 from typing import List
 from time import sleep
+import inspect
+import sys
+from pprint import pprint
+from typing_extensions import DefaultDict
 
-token = os.environ['SMARTTHINGS_PERSONAL_ACCESS_TOKEN']
+token = os.environ["SMARTTHINGS_PERSONAL_ACCESS_TOKEN"]
 now = datetime.datetime.now()
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
+
+once_token = 0
+
+example_device_values = {
+}
+
+class DeviceValues:
+    def __init__(self, values):
+        self.online = values['DeviceWatch-DeviceStatus'] # ex: 'offline'
+        # 'DeviceWatch-Enroll': None,
+        self.check_interval = values['checkInterval']  # ex: 60
+        self.color = values['color']  # ex: None
+        self.color_temperature = values['colorTemperature']  # ex: 6500
+        self.level = values['level']  # ex: 100
+        self.saturation = values['saturation']  #ex: 100
+        self.switch = values['switch']  #ex : 'on'
+        # 'healthStatus': None,
+        # 'hue': 0,
+
 
 async def configure(device: pysmartthings.DeviceEntity, temperature, level):
+    await device.status.refresh()
+    values = DeviceValues(values=device.status.values)
+    if values.online == 'offline':
+        return
+    if values.switch == 'off':
+        return
+
+    print(device.label, values.online, values.switch, values.color_temperature, values.level)
     await device.set_color_temperature(temperature=temperature)
     await device.set_level(level=level)
 
@@ -18,18 +51,20 @@ async def configure(device: pysmartthings.DeviceEntity, temperature, level):
 async def main():
     async with aiohttp.ClientSession() as session:
         api = pysmartthings.SmartThings(session, token)
-        devices: List[pysmartthings.DeviceEntity] = await api.devices()
+        all_devices: List[pysmartthings.DeviceEntity] = await api.devices()
+        devices: List[pysmartthings.DeviceEntity] = [
+            d for d in all_devices if "colorTemperature" in d._capabilities
+        ]
+
+        print_once([d.label for d in devices])
         schedule = get_schedule()
         time = schedule[get_tod(schedule)]
         temperature = time["temperature"]
         level = time["level"]
         await asyncio.gather(
-            *[
-                configure(device, temperature, level) for device in devices
-            ]
+            *[configure(device, temperature, level) for device in devices]
         )
         # await asyncio.gather(*[d.set_color(hue=0, saturation=100) for d in devices])
-    print(f"{datetime.datetime.now()} SUCCESS")
 
 
 def run(loop):
@@ -38,7 +73,7 @@ def run(loop):
 
 def test_run():
     print("\n")
-    run()
+    run(loop)
 
 
 def get_tod(schedule):
@@ -50,22 +85,48 @@ def get_tod(schedule):
     return times[-1]
 
 
+def temp(value):
+    _min = 2200  # 2200
+    _max = 6500  # 6500
+    actual_temp = math.floor(((value - _min) / (_max - _min) * 10000))
+    if actual_temp < 1:
+        actual_temp = 1
+    if actual_temp > 10000:
+        actual_temp = 10000
+    return actual_temp
+
+
 def get_schedule():
+    # temperatures from CREE
+    # temperature can go from 2200 to 6500
+
+    candle_light = temp(2200)
+    soft_white = temp(2700)
+    bright_white = temp(3000)
+    neutral_white = temp(3500)
+    cool_white = temp(4000)
+    daylight = temp(5000)
+    sun_light = temp(6000)
+
+    # times
     sunrise = get_time(6)
     mid_morning = get_time(9)
     noon = get_time(12)
     afternoon = get_time(15)
-    sunset = get_time(20)
+    sunset = get_time(17)
     bedtime = get_time(22)
-    # temperature can go from 2200 to 6500
-    return {
-        sunrise: {"temperature": 3000, "level": 90},
-        mid_morning: {"temperature": 4600, "level": 100},
-        noon: {"temperature": 6500, "level": 100},
-        afternoon: {"temperature": 4600, "level": 100},
-        sunset: {"temperature": 2700, "level": 100},
-        bedtime: {"temperature": 2200, "level": 10},
+
+
+    # schedule
+    schedule = {
+        sunrise: {"temperature": soft_white, "level": 90},
+        mid_morning: {"temperature": cool_white, "level": 90},
+        noon: {"temperature": sun_light, "level": 100},
+        afternoon: {"temperature": bright_white, "level": 100},
+        sunset: {"temperature": soft_white, "level": 50},
+        bedtime: {"temperature": candle_light, "level": 15},
     }
+    return schedule
 
 
 def get_time(hour):
@@ -73,12 +134,22 @@ def get_time(hour):
     return now.replace(**{"hour": hour}, **{"minute": 0, "second": 0, "microsecond": 0})
 
 
-if __name__ == '__main__':
-    while True:
-        try:
-            run(loop)
-        except Exception as e:
-            print(f"{datetime.datetime.now()} FAILURE")
-            print(e)
-            pass
-        sleep(15)
+def print_once(data):
+    global once_token
+    if once_token:
+        pass
+    else:
+        pprint(data)
+        once_token = 1
+
+
+if __name__ == "__main__":
+    # while True:
+    try:
+        run(loop)
+        print(f"{datetime.datetime.now()} SUCCESS")
+    except Exception as e:
+        print(f"{datetime.datetime.now()} FAILURE")
+        print(e)
+        pass
+        # sleep(30)
