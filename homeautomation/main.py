@@ -18,19 +18,19 @@ loop = asyncio.new_event_loop()
 
 once_token = 0
 
-example_device_values = {
-}
+example_device_values = {}
+
 
 class DeviceValues:
     def __init__(self, values):
-        self.online = values['DeviceWatch-DeviceStatus'] # ex: 'offline'
+        self.online = values["DeviceWatch-DeviceStatus"]  # ex: 'offline'
         # 'DeviceWatch-Enroll': None,
-        self.check_interval = values['checkInterval']  # ex: 60
-        self.color = values['color']  # ex: None
-        self.color_temperature = values['colorTemperature']  # ex: 6500
-        self.level = values['level']  # ex: 100
-        self.saturation = values['saturation']  #ex: 100
-        self.switch = values['switch']  #ex : 'on'
+        self.check_interval = values["checkInterval"]  # ex: 60
+        self.color = values["color"]  # ex: None
+        self.color_temperature = values["colorTemperature"]  # ex: 6500
+        self.level = values["level"]  # ex: 100
+        self.saturation = values["saturation"]  # ex: 100
+        self.switch = values["switch"]  # ex : 'on'
         # 'healthStatus': None,
         # 'hue': 0,
 
@@ -38,14 +38,20 @@ class DeviceValues:
 async def configure(device: pysmartthings.DeviceEntity, temperature, level):
     await device.status.refresh()
     values = DeviceValues(values=device.status.values)
-    if values.online == 'offline':
+    if values.online == "offline":
         return
-    if values.switch == 'off':
+    if values.switch == "off":
         return
 
-    print(device.label, values.online, values.switch, values.color_temperature, values.level)
     await device.set_color_temperature(temperature=temperature)
     await device.set_level(level=level)
+    print(
+        device.label,
+        values.online,
+        values.switch,
+        values.color_temperature,
+        values.level,
+    )
 
 
 async def main():
@@ -69,6 +75,10 @@ async def main():
 
 def run(loop):
     loop.run_until_complete(main())
+
+
+def seconds(t: datetime.datetime):
+    return t.timestamp()
 
 
 def test_run():
@@ -96,6 +106,18 @@ def temp(value):
     return actual_temp
 
 
+def test_interpolate():
+    assert interpolate(t1=1, t2=3, v1=1, v2=3, tx=2) == 2
+
+
+def interpolate(t1, t2, v1, v2, tx):
+    # y = mx + b
+    m = (v2 - v1) / (t2 - t1)
+    b = v1 - m * t1
+    y = m * tx + b
+    return y
+
+
 def get_schedule():
     # temperatures from CREE
     # temperature can go from 2200 to 6500
@@ -116,13 +138,12 @@ def get_schedule():
     sunset = get_time(17)
     bedtime = get_time(22)
 
-
     # schedule
     schedule = {
         sunrise: {"temperature": soft_white, "level": 90},
-        mid_morning: {"temperature": cool_white, "level": 90},
-        noon: {"temperature": sun_light, "level": 100},
-        afternoon: {"temperature": bright_white, "level": 100},
+        mid_morning: {"temperature": soft_white, "level": 90},
+        noon: {"temperature": soft_white, "level": 100},
+        afternoon: {"temperature": soft_white, "level": 100},
         sunset: {"temperature": soft_white, "level": 50},
         bedtime: {"temperature": candle_light, "level": 15},
     }
