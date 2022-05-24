@@ -1,0 +1,14 @@
+[Unit]
+Description=My test service
+After=multi-user.target
+
+[Service]
+User=james
+Group=james
+Type=simple
+Restart=always
+#ExecStart=/usr/bin/python3 /home/<username>/test.py
+ExecStart=/usr/bin/bash -c "cd /home/james/git/homeautomation && bash systemd/lights.sh"
+
+[Install]
+WantedBy=multi-user.target

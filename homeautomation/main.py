@@ -35,9 +35,38 @@ class DeviceValues:
         # 'hue': 0,
 
 
+async def configure_vacation(device: pysmartthings.DeviceEntity, temperature, level):
+    await device.status.refresh()
+    values = DeviceValues(values=device.status.values)
+
+    # new logic for on daytime, off nighttime
+    _now_hour = datetime.datetime.now()
+
+    if get_time(8) < _now_hour < get_time(23):
+        pass
+    else:
+        await device.switch_off()
+        return
+
+    await device.set_color_temperature(temperature=temperature)
+    await device.set_level(level=level)
+    print(
+        device.label,
+        values.online,
+        values.switch,
+        values.color_temperature,
+        values.level,
+    )
+
+
 async def configure(device: pysmartthings.DeviceEntity, temperature, level):
     await device.status.refresh()
     values = DeviceValues(values=device.status.values)
+
+    # new logic for on daytime, off nighttime
+    _now_hour = datetime.datetime.now()
+
+    # skip if off
     if values.online == "offline":
         return
     if values.switch == "off":
@@ -64,7 +93,7 @@ async def main():
 
         print_once([d.label for d in devices])
         schedule = get_schedule()
-        time = schedule[get_tod(schedule)]
+        time = schedule[get_time_of_day(schedule)]
         temperature = time["temperature"]
         level = time["level"]
         await asyncio.gather(
@@ -86,7 +115,7 @@ def test_run():
     run(loop)
 
 
-def get_tod(schedule):
+def get_time_of_day(schedule):
     now = datetime.datetime.now()
     times = list(schedule.keys())
     for t in times[::-1]:
@@ -167,6 +196,8 @@ def print_once(data):
 if __name__ == "__main__":
     # while True:
     try:
+        print("---")
+        print(f"{datetime.datetime.now()} Starting")
         run(loop)
         print(f"{datetime.datetime.now()} SUCCESS")
     except Exception as e:
