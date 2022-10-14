@@ -35,6 +35,23 @@ class DeviceValues:
         # 'hue': 0,
 
 
+"""
+'_api': <pysmartthings.api.Api object at 0x7f255f52cdc0>,
+'_capabilities'
+'_components': {},
+'_device_id': 'b3753858-e2d7-46a7-84e2-8dcab0645348',
+'_device_type_id': '479a0628-421e-426c-914d-3f16dacd3095',
+'_device_type_name': 'ZigBee RGBW Bulb',
+'_device_type_network': 'ZIGBEE',
+'_label': 'Sengled Multicolor [office]',
+'_location_id': '391a436f-dd31-4876-9fcf-30bbe6dc64f0',
+'_name': 'Sengled Multicolor',
+'_room_id': '3c001d16-6f00-4393-ad5e-8184e5035545',
+'_status': <pysmartthings.device.DeviceStatus object at 0x7f255ef1e1d0>,
+                                                      '_type': 'DTH'}
+"""
+
+
 async def configure_vacation(device: pysmartthings.DeviceEntity, temperature, level):
     await device.status.refresh()
     values = DeviceValues(values=device.status.values)
@@ -74,6 +91,8 @@ async def configure(device: pysmartthings.DeviceEntity, temperature, level):
 
     await device.set_color_temperature(temperature=temperature)
     await device.set_level(level=level)
+
+    # report
     print(
         device.label,
         values.online,

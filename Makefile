@@ -22,6 +22,9 @@ debug: systemd_reload systemd_restart systemd_logs
 systemd_restart:
 	sudo systemctl restart $(service_name)
 
+systemd_stop:
+	sudo systemctl stop $(service_name)
+
 systemd_logs:
 	journalctl -u lights.service --since '5 minutes ago' -f
 
